@@ -7,6 +7,20 @@ import (
 	"strconv"
 )
 
+type Request struct {
+	RequestType int    `json:"request_type"`
+	Equation    string `json:"equation"`
+}
+
+func NewRequest(requestType int) Request {
+	return Request{RequestType: requestType}
+}
+
+type Response struct {
+	Status string  `json:"status"`
+	Result float64 `json:"result"`
+}
+
 func OrchestratorHandler(w http.ResponseWriter, r *http.Request) {
 
 	if val := r.Context().Value("addExpression"); val != nil {
@@ -53,6 +67,7 @@ func OrchestratorHandler(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 	}
+
 }
 
 /*

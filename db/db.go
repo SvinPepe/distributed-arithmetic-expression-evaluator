@@ -1,6 +1,7 @@
 package db
 
 import (
+	"awesomeProject2/parser"
 	"database/sql"
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
@@ -22,6 +23,9 @@ type Operation struct {
 const dbPath = "db/db.db"
 
 func AddExpressionToDB(exp Expression) error {
+
+	exp.Expression = parser.ToPostfix(exp.Expression)
+
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return err
@@ -46,6 +50,16 @@ func GetResult(id int) (float64, error) {
 		return result, err
 	}
 	return 0, errors.New("no result found")
+}
+
+func SetResult(expression string, result float64) error {
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	_, err = db.Exec("UPDATE equasions set result = ?, status = 'done' where expression = ?", result, expression)
+	return err
 }
 
 func GetExpressions() ([]Expression, error) {
@@ -91,6 +105,29 @@ func GetOperations() ([]Operation, error) {
 	for rows.Next() {
 		p := Operation{}
 		err := rows.Scan(&p.Operation, &p.Time)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func GetQueue() ([]Expression, error) {
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	rows, err := db.Query("SELECT * from equasions where status = 'sent'")
+
+	var result []Expression
+	if rows == nil {
+		return make([]Expression, 0), nil
+	}
+	for rows.Next() {
+		p := Expression{}
+		err := rows.Scan(&p.ExpressionId, &p.Expression, &p.Status, &p.Result, &p.TimeSpent)
 		if err != nil {
 			return nil, err
 		}
