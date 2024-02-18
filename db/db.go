@@ -3,34 +3,42 @@ package db
 import (
 	"database/sql"
 	"errors"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Expression struct {
-	expressionId int
-	expression   string
-	status       string
-	result       float64
-	timeSpent    int // in milliseconds
+	ExpressionId int
+	Expression   string
+	Status       string
+	Result       float64
+	TimeSpent    int // in milliseconds
 }
 
+type Operation struct {
+	Operation string
+	Time      int
+}
+
+const dbPath = "db/db.db"
+
 func AddExpressionToDB(exp Expression) error {
-	db, err := sql.Open("sqlite3", "db.db")
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
-	_, err = db.Exec("insert into equasions (expressionId, expression, status, result, timeSpent) VALUES (?, ?, ?, ?, ?)",
-		exp.expressionId, exp.expression, exp.status, exp.result, exp.timeSpent)
+	_, err = db.Exec("insert into equasions (expressionId, expression, status, result, timeSpent) VALUES ((SELECT max(expressionId) from equasions) + 1, ?, ?, ?, ?)",
+		exp.Expression, exp.Status, exp.Result, exp.TimeSpent)
 	return err
 }
 
 func GetResult(id int) (float64, error) {
-	db, err := sql.Open("sqlite3", "db.db")
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return 0, err
 	}
 	defer db.Close()
-	rows, err := db.Query("SELECT from equasions result where expressionId = ?", id)
+	rows, err := db.Query("SELECT result from equasions where expressionId = ?", id)
 
 	var result float64
 	for rows.Next() {
@@ -41,7 +49,7 @@ func GetResult(id int) (float64, error) {
 }
 
 func GetExpressions() ([]Expression, error) {
-	db, err := sql.Open("sqlite3", "db.db")
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +59,38 @@ func GetExpressions() ([]Expression, error) {
 	var result []Expression
 	for rows.Next() {
 		p := Expression{}
-		err := rows.Scan(&p.expressionId, &p.expression, &p.status, &p.result, &p.timeSpent)
+		err := rows.Scan(&p.ExpressionId, &p.Expression, &p.Status, &p.Result, &p.TimeSpent)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func AddOperation(oper Operation) error {
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	_, err = db.Exec("insert into operations (operation, time) VALUES (?, ?)",
+		oper.Operation, oper.Time)
+	return err
+}
+
+func GetOperations() ([]Operation, error) {
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	rows, err := db.Query("SELECT * from operations	")
+
+	var result []Operation
+	for rows.Next() {
+		p := Operation{}
+		err := rows.Scan(&p.Operation, &p.Time)
 		if err != nil {
 			return nil, err
 		}
